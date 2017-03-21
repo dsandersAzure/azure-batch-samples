@@ -25,10 +25,15 @@
 # DEALINGS IN THE SOFTWARE.
 
 from __future__ import print_function
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 import datetime
 import os
 import sys
 import time
+import json
 
 try:
     input = raw_input
@@ -47,21 +52,30 @@ import common.helpers  # noqa
 # Update the Batch and Storage account credential strings below with the values
 # unique to your accounts. These are used when constructing connection strings
 # for the Batch and Storage client objects.
-_BATCH_ACCOUNT_NAME = ''
-_BATCH_ACCOUNT_KEY = ''
-_BATCH_ACCOUNT_URL = ''
+secrets_file = os.environ.get('secrets_file', None)
+if secrets_file is None:
+    raise ValueError(
+        'The environment variable "secrets-file" was not set. The app cannot be run.'
+    )
 
-_STORAGE_ACCOUNT_NAME = ''
-_STORAGE_ACCOUNT_KEY = ''
+_configuration = configparser.ConfigParser()
+_configuration.read(secrets_file)
 
-_POOL_ID = 'PythonTutorialPool'
-_POOL_NODE_COUNT = 1
+_BATCH_ACCOUNT_NAME = _configuration.get('Batch','batchaccountname')
+_BATCH_ACCOUNT_KEY = _configuration.get('Batch','batchaccountkey')
+_BATCH_ACCOUNT_URL = _configuration.get('Batch','batchaccounturl')
+
+_STORAGE_ACCOUNT_NAME = _configuration.get('Storage','storageaccountname')
+_STORAGE_ACCOUNT_KEY = _configuration.get('Storage','storageaccountkey')
+
+_POOL_ID = 'PythonTutorialPool_xl'
+_POOL_NODE_COUNT = 3
 _POOL_VM_SIZE = 'BASIC_A1'
 _NODE_OS_PUBLISHER = 'Canonical'
 _NODE_OS_OFFER = 'UbuntuServer'
 _NODE_OS_SKU = '16'
 
-_JOB_ID = 'PythonTutorialJob'
+_JOB_ID = 'PythonTutorialJob_xl'
 
 _TUTORIAL_TASK_FILE = 'python_tutorial_task.py'
 
@@ -210,7 +224,9 @@ def create_pool(batch_service_client, pool_id,
         'curl -fSsL https://bootstrap.pypa.io/get-pip.py | python',
         # Install the azure-storage module so that the task script can access
         # Azure Blob storage, pre-cryptography version
-        'pip install azure-storage==0.32.0']
+        'pip install azure-storage==0.32.0',
+        # Install Open Python Xl package openpyxl
+        'pip install openpyxl==2.4.5']
 
     # Get the node agent SKU and image reference for the virtual machine
     # configuration.
@@ -359,7 +375,7 @@ def download_blobs_from_container(block_blob_client,
     container_blobs = block_blob_client.list_blobs(container_name)
 
     for blob in container_blobs.items:
-        destination_file_path = os.path.join(directory_path, blob.name)
+        destination_file_path = os.path.join('outputs', blob.name)
 
         block_blob_client.get_blob_to_path(container_name,
                                            blob.name,

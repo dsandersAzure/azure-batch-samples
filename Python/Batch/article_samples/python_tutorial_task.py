@@ -31,6 +31,7 @@ import os
 import string
 
 import azure.storage.blob as azureblob
+from openpyxl import Workbook
 
 if __name__ == '__main__':
 
@@ -88,4 +89,18 @@ if __name__ == '__main__':
 
     blob_client.create_blob_from_path(args.storagecontainer,
                                       output_file,
+                                      output_file_path)
+    #
+    # New code -> Create an Excel file
+    #
+    wb = Workbook()
+    ws = wb.get_active_sheet()
+    ws['A1'] = "Hello"
+    ws['B1'] = "World!"
+    ws['A5'] = "David Sanders"
+    excel_file = '{}_excel.xlsx'.format(
+        os.path.splitext(args.filepath)[0])
+    wb.save(excel_file)
+    blob_client.create_blob_from_path(args.storagecontainer,
+                                      excel_file,
                                       output_file_path)
